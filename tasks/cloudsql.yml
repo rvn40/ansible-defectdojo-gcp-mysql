@@ -1,0 +1,74 @@
+---
+
+- name: Check if docker is installed
+  shell: docker --version
+  ignore_errors: yes
+  register: docker_is_existed 
+
+- name: Force end playbook when required packages is not exist
+  meta: end_play
+  when: docker_is_existed.stderr_lines|length == 1
+
+- name: Check if docker is running
+  shell: systemctl show --property ActiveState docker
+  ignore_errors: yes
+  register: docker_is_running
+
+- debug:
+    msg: "Docker is in inactive state. Please activate first to continue the playbook!!!"
+  when: docker_is_running.stdout == "ActiveState=inactive"
+
+- name: Force end playbook when docker inactive
+  meta: end_play
+  when: docker_is_running.stdout == "ActiveState=inactive"
+
+- name: Example copying script file
+  template:
+    src: files/dockerfiles/Dockerfile.j2
+    dest: ./Dockerfile
+
+# Build
+- name: Build image and with build args
+  docker_image:
+    name: cloud-sdk:custom
+    build:
+      path: ./
+      dockerfile: Dockerfile
+      pull: yes
+    source: build
+
+- name: Create a gcloud config
+  docker_container:
+    name: gcloud-config
+    image: cloud-sdk:custom
+    command: ["gcloud auth activate-service-account --key-file=/tmp/{{custom_vars[2].serviceaccounts[0].json_name}}"]
+
+- name: Create a CloudSQL instance without external IP
+  docker_container:
+    name: cloud-sdk-latest-cloudsql
+    image: cloud-sdk:custom
+    auto_remove: no
+    command: ["gcloud beta sql instances create {{custom_vars[8].cloudsql[0].instance_name}} --no-assign-ip --enable-bin-log --availability-type={{custom_vars[8].cloudsql[0].properties[0].availability}} --database-version={{custom_vars[8].cloudsql[0].properties[0].rdbms}} --tier={{custom_vars[8].cloudsql[0].properties[0].type}} --zone={{ custom_vars[0].general.region_default }}-{{custom_vars[8].cloudsql[0].properties[0].zone}} --root-password={{custom_vars[8].cloudsql[0].properties[0].rootpasswd}} --storage-type={{custom_vars[8].cloudsql[0].properties[0].storage_type}} --storage-size={{custom_vars[8].cloudsql[0].properties[0].storage_size}} --project={{ custom_vars[1].project[0].projectID }} --network={{custom_vars[5].vpc[0].project_scope}}{{custom_vars[5].vpc[0].name}}"]
+    volumes_from:
+      - gcloud-config
+
+- name: Clean up Dockerfile
+  file:
+    path: ./Dockerfile
+    state: absent
+
+- name: Clean up container
+  docker_container:
+    name: "{{item}}"
+    state: absent
+  with_items:
+    - cloud-sdk-latest-cloudsql
+    - gcloud-config
+
+- name: Clean up images
+  docker_image:
+    state: absent
+    name: "{{item.name}}"
+    tag: "{{item.tag}}"
+  with_items:
+    - { name: cloud-sdk, tag: custom }

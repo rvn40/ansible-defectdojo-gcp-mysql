@@ -1,0 +1,57 @@
+---
+
+
+- name: Example copying script file
+  template:
+    src: files/dockerfiles/Dockerfile.j2
+    dest: ./Dockerfile
+
+# Build
+- name: Build image and with build args
+  docker_image:
+    name: cloud-sdk:custom
+    build:
+      path: ./
+      dockerfile: Dockerfile
+      pull: yes
+    source: build
+
+- name: Create a gcloud config
+  docker_container:
+    name: gcloud-config
+    image: cloud-sdk:custom
+    command: ["gcloud auth activate-service-account --key-file=/tmp/{{custom_vars[2].serviceaccounts[0].json_name}}"]
+
+- name: Restore database
+  docker_container:
+    name: cloud-sdk-latest-cloudsql-restore
+    image: cloud-sdk:custom
+    auto_remove: no
+    command: ["gcloud sql import sql {{custom_vars[8].cloudsql[0].instance_name}} {{custom_vars[8].cloudsql[0].properties[0].dump_location}} --database={{custom_vars[8].cloudsql[0].properties[0].db_name}}"]
+    volumes_from:
+      - gcloud-config
+
+- name: Sleep for 60 seconds and continue with play
+  wait_for:
+    timeout: 60
+
+- name: Clean up Dockerfile
+  file:
+    path: ./Dockerfile
+    state: absent
+
+- name: Clean up container
+  docker_container:
+    name: "{{item}}"
+    state: absent
+  with_items:
+    - cloud-sdk-latest-cloudsql-restore
+    - gcloud-config
+
+- name: Clean up images
+  docker_image:
+    state: absent
+    name: "{{item.name}}"
+    tag: "{{item.tag}}"
+  with_items:
+    - { name: cloud-sdk, tag: custom }

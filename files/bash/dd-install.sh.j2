@@ -1,0 +1,19 @@
+#!/bin/sh
+if [ ! "$(sudo docker ps -q )" ]; then
+    if [ ! "$(sudo docker images -q )" ]; then
+        sudo docker-compose -f /home/{{users.ssh[0].username}}/devsecops-defectdojo/docker-compose.yml build
+    else
+        sudo docker image prune -f -a
+        sudo docker-compose -f /home/{{users.ssh[0].username}}/devsecops-defectdojo/docker-compose.yml build
+    fi
+  sudo docker-compose -f /home/{{users.ssh[0].username}}/devsecops-defectdojo/docker-compose.yml up -d
+else
+    sudo docker-compose down --volume --remove-orphans
+    if [ ! "$(sudo docker images -q )" ]; then
+        sudo docker-compose -f /home/{{users.ssh[0].username}}/devsecops-defectdojo/docker-compose.yml build 
+    else
+        sudo docker image prune -f -a
+        sudo docker-compose -f /home/{{users.ssh[0].username}}/devsecops-defectdojo/docker-compose.yml build
+    fi
+  sudo docker-compose -f /home/{{users.ssh[0].username}}/devsecops-defectdojo/docker-compose.yml up -d
+fi

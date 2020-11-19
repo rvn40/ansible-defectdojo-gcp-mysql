@@ -1,0 +1,61 @@
+---
+
+custom_vars:
+  - general:
+      prefix_first: "ab"
+      prefix_second: "sre"
+      region_default: "asia-southeast2"
+      wild_world_range: "0.0.0.0/0"
+  - project:
+      - projectID: "" 
+        authkind: "serviceaccount"   
+      - projectID: "" 
+        authkind: "serviceaccount"
+  - serviceaccounts: 
+      - name: ""
+        email: ""
+        json_directory: "files/serviceaccounts/"
+        json_name: "example.json"
+  - users:
+      ssh:
+        - username: ""
+          key_directory: "files/ssh_keys/"
+          key_filename: "example.pem"
+      cloudsql:
+        - username: "defectdojo"
+          password: "defectdojo"
+  # If using bitbucket
+  - bitbucket: 
+      client_id: 
+      client_secret: 
+  - vpc:
+      - project_scope: "projects/<YourVPCProjectName>/global/networks/"
+        name: ""
+  - subnets:
+      - name: "ab-sre-sea2-snet-01"   # Feel free to change it name with your own
+        group: "sea2"
+        subnet_range: 
+  - firewall:
+      - name: "ab-global-internet-webport-allow-rule" # Feel free to change it name with your own
+        protocol: tcp
+        port:   ["80","443","8080"]
+        source_ranges: "0.0.0.0/0"
+        target_tags: "webport-public-rules"
+      - name: "ab-global-internet-ssh-allow-rule" # Feel free to change it name with your own
+        protocol: tcp
+        port:   ["22"]
+        source_ranges: "0.0.0.0/0"
+        target_tags: "ssh-public-rules"
+  - cloudsql:
+      - instance_name: "" # Feel free to change it name with your own
+        properties:
+          - availability: "zonal"
+            zone: "b"
+            type: "db-n1-standard-1"
+            storage_type: "SSD"
+            storage_size: 20
+            rdbms: "MYSQL_8_0"
+            db_name: "" # Feel free to change it name with your own
+            rootpasswd: "" # Feel free to change it name with your own
+            dump_location: "gs://<YourBucketName>/defectdojo/sql_dump/dd.sql"  
+            dump_bucket: "<YourBucketName>" # Feel free to change it name with your own

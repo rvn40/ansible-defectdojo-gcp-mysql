@@ -1,0 +1,58 @@
+---
+
+- name: Check if docker is installed
+  shell: docker --version
+  ignore_errors: yes
+  register: docker_is_existed 
+
+- name: Force end playbook when required packages is not exist
+  meta: end_play
+  when: docker_is_existed.stderr_lines|length == 1
+
+- name: Check if docker is running
+  shell: systemctl show --property ActiveState docker
+  ignore_errors: yes
+  register: docker_is_running
+
+- debug:
+    msg: "Docker is in inactive state. Please activate first to continue the playbook!!!"
+  when: docker_is_running.stdout == "ActiveState=inactive"
+
+- name: Force end playbook when docker inactive
+  meta: end_play
+  when: docker_is_running.stdout == "ActiveState=inactive"
+  
+- name: Get info on an instance
+  gcp_sql_instance_info:
+    project: "{{ custom_vars[1].project[0].projectID }}"
+    auth_kind: "{{ custom_vars[1].project[0].authkind }}"
+    service_account_file: "{{custom_vars[2].serviceaccounts[0].json_directory}}{{custom_vars[2].serviceaccounts[0].json_name}}"
+  register: _info
+
+# How to filter value "_info"
+#- local_action: copy content={{ item.ipAddresses[0].ipAddress }} dest=./info_sql.json
+#  with_items: "{{_info.resources}}"
+#  when: item.name  == custom_vars[8].cloudsql[0].instance_name
+
+- name: Create a user
+  gcp_sql_user:
+    name: "{{custom_vars[3].users.cloudsql[0].username}}"
+    host: "%"
+    password: "{{custom_vars[3].users.cloudsql[0].password}}"
+    instance:
+      name: "{{custom_vars[8].cloudsql[0].instance_name}}"
+    project: "{{ custom_vars[1].project[0].projectID }}"
+    auth_kind: "{{ custom_vars[1].project[0].authkind }}"
+    service_account_file: "{{custom_vars[2].serviceaccounts[0].json_directory}}{{custom_vars[2].serviceaccounts[0].json_name}}"
+    state: present
+
+- name: Create a database
+  gcp_sql_database:
+    name: "{{custom_vars[8].cloudsql[0].properties[0].db_name}}"
+    charset: utf8
+    instance: "{{custom_vars[8].cloudsql[0].instance_name}}"
+    project: "{{ custom_vars[1].project[0].projectID }}"
+    auth_kind: "{{ custom_vars[1].project[0].authkind }}"
+    service_account_file: "{{custom_vars[2].serviceaccounts[0].json_directory}}{{custom_vars[2].serviceaccounts[0].json_name}}"
+    state: present
+

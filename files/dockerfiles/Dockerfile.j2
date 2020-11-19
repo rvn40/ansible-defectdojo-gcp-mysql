@@ -1,0 +1,4 @@
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:latest
+
+RUN mkdir -p /tmp
+ADD ./{{custom_vars[2].serviceaccounts[0].json_directory}}{{custom_vars[2].serviceaccounts[0].json_name}} /tmp

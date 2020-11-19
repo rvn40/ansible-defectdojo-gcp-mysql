@@ -1,0 +1,12 @@
+---
+
+- hosts: localhost
+  become: yes
+  vars_files:
+    - vars/vars.yml
+  tasks: 
+    - include: tasks/cloudsql-config.yml
+    - include: tasks/bucket-config.yml
+    - include: tasks/mysql-config.yml
+#    - include: tasks/cloudsql-facts.yml
+
